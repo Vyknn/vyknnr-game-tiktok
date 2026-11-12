@@ -1,5 +1,4 @@
 import { createServer } from 'node:http';
-import { parse } from 'node:url';
 import next from 'next';
 import { WebSocketServer } from 'ws';
 import { GAME } from './src/config/game';
@@ -28,11 +27,11 @@ app.prepare().then(() => {
         : new TikFinitySource({ url: m.url }),
   });
 
-  const server = createServer((req, res) => handle(req, res, parse(req.url || '', true)));
+  const server = createServer((req, res) => handle(req, res));
   const wss = new WebSocketServer({ noServer: true });
   wss.on('connection', (ws) => hub.attach(ws));
   server.on('upgrade', (req, socket, head) => {
-    if (parse(req.url || '').pathname === '/ws') {
+    if (new URL(req.url || '/', 'http://localhost').pathname === '/ws') {
       wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
     } else {
       upgradeNext(req, socket, head); // Next HMR
