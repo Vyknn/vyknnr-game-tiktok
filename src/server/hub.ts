@@ -4,7 +4,7 @@ import type { ClientMsg, GameEvent, ServerMsg, SourceStatus } from '@/shared/typ
 
 export type WebSocketLike = {
   send(data: string): void;
-  on(ev: 'message' | 'close', cb: (d?: unknown) => void): void;
+  on(ev: 'message' | 'close' | 'error', cb: (d?: unknown) => void): void;
   readyState: number;
 };
 type ConnectMsg = Extract<ClientMsg, { t: 'connect' }>;
@@ -21,10 +21,13 @@ export class Hub {
 
   constructor(private deps: Deps) {}
 
-  attach(ws: WebSocketLike): void {
+  /** `canControl` = this socket may send commands (control panel). OBS /game sockets are read-only. */
+  attach(ws: WebSocketLike, canControl = false): void {
     this.clients.add(ws);
     ws.on('close', () => this.clients.delete(ws));
-    ws.on('message', (d) => this.onMessage(d));
+    // Without a listener, ws re-throws protocol errors (bad UTF-8, oversize frame) and kills the process.
+    ws.on('error', () => this.clients.delete(ws));
+    if (canControl) ws.on('message', (d) => this.onMessage(d));
     this.sendTo(ws, { t: 'snapshot', s: this.deps.engine.snapshot() });
     this.sendTo(ws, { t: 'status', s: this.status });
   }

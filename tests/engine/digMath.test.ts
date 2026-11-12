@@ -32,6 +32,11 @@ describe('digMath', () => {
   it('computes depth in meters', () => {
     expect(depthMeters(5)).toBe(10);
   });
+  it('clamps absurd event sizes so a tick always terminates', () => {
+    expect(likeToDigs(1e300)).toBe(1000);
+    expect(giftToDigs(1e300, 1e9)).toBe(10_000_000);
+    expect(giftToDigs(Infinity, 1)).toBe(0);
+  });
   it('caps player bonus at ×5', () => {
     expect(playerBonus(0.5)).toBe(1.5);
     expect(playerBonus(10)).toBe(5);

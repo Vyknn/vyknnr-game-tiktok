@@ -4,11 +4,12 @@ import type { Biome } from '@/shared/types';
 const nonNeg = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
 
 export function likeToDigs(count: number): number {
-  return nonNeg(count);
+  return Math.min(GAME.MAX_LIKES_PER_EVENT, nonNeg(count));
 }
 
 export function giftToDigs(diamonds: number, repeat: number): number {
-  return nonNeg(nonNeg(diamonds) * nonNeg(repeat) * GAME.GIFT_MULTIPLIER);
+  const d = nonNeg(diamonds) * nonNeg(repeat) * GAME.GIFT_MULTIPLIER; // may overflow to Infinity
+  return d > GAME.MAX_DIGS_PER_GIFT ? GAME.MAX_DIGS_PER_GIFT : d;
 }
 
 /** Artifact rolls for one gift: ceil(sqrt(digs)), capped, so whales can't max bonus in one gift. */

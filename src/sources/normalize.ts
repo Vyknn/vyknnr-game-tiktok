@@ -29,7 +29,7 @@ export function normalizeUser(raw: Raw): Viewer | null {
 
 export function normalizeLike(raw: Raw): LiveEvent | null {
   const user = normalizeUser(raw);
-  const count = Math.floor(num(raw?.likeCount));
+  const count = Math.floor(num(raw?.likeCount ?? raw?.count));
   return user && count > 0 ? { type: 'like', user, count } : null;
 }
 
@@ -54,7 +54,7 @@ export function normalizeJoin(raw: Raw): LiveEvent | null {
 
 export function normalizeChat(raw: Raw): LiveEvent | null {
   const user = normalizeUser(raw);
-  return user && { type: 'chat', user, text: str(raw.comment) };
+  return user && { type: 'chat', user, text: str(raw.comment ?? raw.content) };
 }
 
 const TIKFINITY: Record<string, (d: Raw) => LiveEvent | null> = {

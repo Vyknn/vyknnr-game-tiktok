@@ -57,6 +57,9 @@ describe('join / chat', () => {
     expect(normalizeJoin(f.v2Member)?.type).toBe('join');
     expect(normalizeChat(f.v2Chat)).toMatchObject({ type: 'chat', text: '!bag' });
   });
+  it('reads v3 chat content (connector 2.5)', () => {
+    expect(normalizeChat(f.v3Chat)).toMatchObject({ type: 'chat', text: '!bag', user: { userId: '7' } });
+  });
 });
 
 describe('normalizeTikFinity', () => {

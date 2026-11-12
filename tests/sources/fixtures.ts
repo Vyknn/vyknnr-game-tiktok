@@ -6,8 +6,9 @@ export const v2Like = {
 };
 export const v3Like = {
   user: { id: '42', displayId: 'nong', nickname: 'Nong', avatarThumb: { urlList: ['https://p/1.jpg'] } },
-  likeCount: 15,
+  count: 15, total: '1200',
 };
+export const v3Chat = { user: { id: '7', displayId: 'joe', nickname: 'Joe' }, content: '!bag' };
 export const v2GiftStreakMid = {
   user: { userId: '42', uniqueId: 'nong', nickname: 'Nong' },
   repeatCount: 4, repeatEnd: false, giftDetails: { giftType: 1, giftName: 'Rose', diamondCount: 1 },

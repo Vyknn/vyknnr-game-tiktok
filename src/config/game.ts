@@ -23,6 +23,9 @@ export const GAME = {
   SAVE_INTERVAL_MS: 5_000,
   FEED_MAX: 6,
   AVATAR_COUNT: 8,
+  /** Sanity caps per event so a malformed/hostile payload can't hang the tick or overflow HP. */
+  MAX_LIKES_PER_EVENT: 1_000,
+  MAX_DIGS_PER_GIFT: 10_000_000,
 } as const;
 
 export const BIOMES = ['grass', 'dirt', 'stone', 'coal', 'crystal', 'marble', 'magma'] as const;

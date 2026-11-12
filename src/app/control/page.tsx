@@ -33,10 +33,12 @@ export default function ControlPage() {
   const { snapshot, status, connected, send } = useGameSocket();
   const [cfg, setCfg] = useState<Saved>(DEFAULTS);
   const [tester, setTester] = useState('tester1');
+  const [hasToken, setHasToken] = useState(true);
 
   useEffect(() => {
     setCfg(load()); // eslint-disable-line react-hooks/set-state-in-effect
     setTester(`tester${Math.floor(Math.random() * 90 + 10)}`);
+    setHasToken(new URLSearchParams(location.search).has('token'));
   }, []);
   const update = (p: Partial<Saved>) => setCfg((c) => { const n = { ...c, ...p }; save(n); return n; });
 
@@ -101,6 +103,12 @@ export default function ControlPage() {
             </button>
           </div>
         </section>
+
+        {connected && !hasToken && (
+          <p className="rounded-xl bg-red-900/60 p-4 text-sm">
+            หน้านี้ไม่มี token ควบคุม — ปุ่มจะไม่ทำงาน ให้เปิดลิงก์ <code>/control?token=…</code> ที่แสดงใน terminal ตอนรันเซิร์ฟเวอร์
+          </p>
+        )}
 
         {snapshot && (
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">

@@ -17,7 +17,8 @@ export function useGameSocket() {
     let retry: ReturnType<typeof setTimeout> | undefined;
     const open = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/ws`);
+      const token = new URLSearchParams(location.search).get('token');
+      const ws = new WebSocket(`${proto}://${location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`);
       wsRef.current = ws;
       ws.onopen = () => setConnected(true);
       ws.onmessage = (ev) => {

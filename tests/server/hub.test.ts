@@ -10,8 +10,9 @@ class FakeWs implements WebSocketLike {
   sent: ServerMsg[] = [];
   private handlers: Record<string, ((d?: unknown) => void)[]> = {};
   send(data: string) { this.sent.push(JSON.parse(data)); }
-  on(ev: 'message' | 'close', cb: (d?: unknown) => void) { (this.handlers[ev] ??= []).push(cb); }
-  emit(ev: 'message' | 'close', d?: unknown) { this.handlers[ev]?.forEach((h) => h(d)); }
+  on(ev: 'message' | 'close' | 'error', cb: (d?: unknown) => void) { (this.handlers[ev] ??= []).push(cb); }
+  emit(ev: 'message' | 'close' | 'error', d?: unknown) { this.handlers[ev]?.forEach((h) => h(d)); }
+  listeners(ev: string) { return this.handlers[ev]?.length ?? 0; }
   client(msg: ClientMsg | string) { this.emit('message', typeof msg === 'string' ? msg : JSON.stringify(msg)); }
   last<T extends ServerMsg['t']>(t: T) {
     return this.sent.filter((m): m is Extract<ServerMsg, { t: T }> => m.t === t).at(-1);
@@ -48,13 +49,13 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 describe('Hub', () => {
   it('sends snapshot and status immediately on attach', () => {
     const ws = new FakeWs();
-    hub.attach(ws);
+    hub.attach(ws, true);
     expect(ws.last('snapshot')?.s.layer).toBe(0);
     expect(ws.last('status')?.s.state).toBe('idle');
   });
   it('a late client sees the current state (OBS refresh)', () => {
     const a = new FakeWs();
-    hub.attach(a);
+    hub.attach(a, true);
     a.client({ t: 'mock', event: { type: 'like', user, count: 5 } });
     hub.tick();
     const b = new FakeWs();
@@ -63,7 +64,7 @@ describe('Hub', () => {
   });
   it('broadcasts dig events to every client', () => {
     const a = new FakeWs(); const b = new FakeWs();
-    hub.attach(a); hub.attach(b);
+    hub.attach(a, true); hub.attach(b);
     a.client({ t: 'mock', event: { type: 'like', user, count: 3 } });
     hub.tick();
     for (const ws of [a, b]) expect(ws.last('events')?.e.some((e) => e.k === 'dig')).toBe(true);
@@ -77,7 +78,7 @@ describe('Hub', () => {
   });
   it('stops the running source before starting another', async () => {
     const ws = new FakeWs();
-    hub.attach(ws);
+    hub.attach(ws, true);
     ws.client({ t: 'connect', kind: 'connector', username: 'x' });
     await flush();
     ws.client({ t: 'connect', kind: 'tikfinity', url: 'ws://localhost:21213/' });
@@ -86,7 +87,7 @@ describe('Hub', () => {
   });
   it('routes source events into the engine and starts a session on roomId', async () => {
     const ws = new FakeWs();
-    hub.attach(ws);
+    hub.attach(ws, true);
     ws.client({ t: 'connect', kind: 'connector', username: 'x' });
     await flush();
     sources[0].onEvent({ type: 'like', user, count: 4 });
@@ -98,7 +99,7 @@ describe('Hub', () => {
   });
   it('newLive resets depth', () => {
     const ws = new FakeWs();
-    hub.attach(ws);
+    hub.attach(ws, true);
     ws.client({ t: 'mock', event: { type: 'like', user, count: 300 } });
     hub.tick();
     ws.client({ t: 'newLive' });
@@ -112,5 +113,31 @@ describe('Hub', () => {
     const n = ws.sent.length;
     hub.tick();
     expect(ws.sent.length).toBe(n);
+  });
+  it('registers an error handler so a bad frame cannot crash the server', () => {
+    const ws = new FakeWs();
+    hub.attach(ws);
+    expect(ws.listeners('error')).toBeGreaterThan(0);
+    expect(() => ws.emit('error', new Error('WS_ERR_INVALID_UTF8'))).not.toThrow();
+  });
+  it('ignores control messages from read-only clients', async () => {
+    const viewer = new FakeWs();
+    hub.attach(viewer, false);
+    viewer.client({ t: 'mock', event: { type: 'like', user, count: 300 } });
+    viewer.client({ t: 'connect', kind: 'connector', username: 'x' });
+    await flush();
+    hub.tick();
+    expect(engine.snapshot().totalDigs).toBe(0);
+    expect(log).toEqual([]);
+  });
+  it('clamps absurd mock counts', () => {
+    const ws = new FakeWs();
+    hub.attach(ws, true);
+    ws.client({ t: 'mock', event: { type: 'like', user, count: 1e300 } });
+    ws.client({ t: 'mock', event: { type: 'gift', user, giftName: 'x', diamonds: 1e300, repeat: 1e9 } });
+    hub.tick();
+    const s = engine.snapshot();
+    expect(Number.isFinite(s.hp)).toBe(true);
+    expect(Number.isFinite(s.maxHp)).toBe(true);
   });
 });
