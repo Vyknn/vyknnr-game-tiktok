@@ -147,3 +147,17 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Brainstorm companion
+.superpowers/
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# game data
+/data/
+
+# reference screenshots (third-party game, not ours)
+/image*.png
