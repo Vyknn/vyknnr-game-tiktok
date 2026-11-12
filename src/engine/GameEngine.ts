@@ -23,6 +23,7 @@ export class GameEngine {
   private hp = layerMaxHp(0);
   private totalDigs = 0;
   private lastLeaderboardAt: number;
+  private ticks = 0;
 
   constructor(private deps: Deps) {
     this.lastLeaderboardAt = deps.now();
@@ -78,6 +79,9 @@ export class GameEngine {
 
   tick(): GameEvent[] {
     const events: GameEvent[] = [];
+    if (++this.ticks % GAME.SWEEP_EVERY_TICKS === 0) {
+      for (const id of this.roster.sweep(this.deps.now())) this.bonusCache.delete(id);
+    }
     for (const { uniqueId, count } of this.pendingLikes.values()) this.pushFeed(`❤ @${uniqueId} x${count}`);
     this.pendingLikes.clear();
 
@@ -171,6 +175,7 @@ export class GameEngine {
     this.hp = layerMaxHp(0);
     this.totalDigs = 0;
     this.roster.clear();
+    this.bonusCache.clear();
     this.queue.drainAll();
     this.pendingLikes.clear();
     this.pendingBags.clear();

@@ -141,3 +141,24 @@ describe('Hub', () => {
     expect(Number.isFinite(s.maxHp)).toBe(true);
   });
 });
+
+describe('Hub source switching', () => {
+  it('disconnect is not blocked by a source whose start never resolves', async () => {
+    const order: string[] = [];
+    const hanging = {
+      kind: 'connector' as const,
+      start: () => { order.push('start'); return new Promise<void>(() => {}); },
+      stop: async () => { order.push('stop'); },
+    };
+    const engine = new GameEngine({ store: new SqliteStore(':memory:'), rng: () => 0.99, now: () => 0 });
+    const hub = new Hub({ engine, makeSource: () => hanging });
+    const ws = new FakeWs();
+    hub.attach(ws, true);
+    ws.client({ t: 'connect', kind: 'connector', username: 'x' });
+    await flush();
+    ws.client({ t: 'disconnect' });
+    await flush(); await flush();
+    expect(order).toEqual(['start', 'stop']);
+    expect(ws.last('status')?.s.state).toBe('idle');
+  });
+});

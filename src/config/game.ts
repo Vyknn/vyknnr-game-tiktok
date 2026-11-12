@@ -25,6 +25,9 @@ export const GAME = {
   AVATAR_COUNT: 8,
   /** Sanity caps per event so a malformed/hostile payload can't hang the tick or overflow HP. */
   MAX_LIKES_PER_EVENT: 1_000,
+  /** Viewers unseen this long drop out of memory (they keep their artifacts in the DB). */
+  IDLE_EVICT_MS: 10 * 60_000,
+  SWEEP_EVERY_TICKS: 50,
   MAX_DIGS_PER_GIFT: 10_000_000,
 } as const;
 

@@ -54,4 +54,13 @@ describe('Roster', () => {
     expect(r.view(0).onBlock).toHaveLength(0);
     expect(r.get('1')).toBeUndefined();
   });
+  it('evicts viewers not seen for IDLE_EVICT_MS', () => {
+    const r = new Roster();
+    r.touch(v(1), 0);
+    r.touch(v(2), 500_000);
+    r.sweep(600_001);
+    expect(r.get('1')).toBeUndefined();
+    expect(r.get('2')).toBeDefined();
+    expect(r.size).toBe(1);
+  });
 });

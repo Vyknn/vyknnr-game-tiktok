@@ -132,6 +132,19 @@ describe('GameEngine roster + feed', () => {
   });
 });
 
+describe('GameEngine memory', () => {
+  it('forgets idle viewers and their cached bonus over a long live', () => {
+    const g = make(); g.startSession(null);
+    for (let i = 0; i < 500; i++) g.handle({ type: 'join', user: { userId: `${i}`, uniqueId: `u${i}`, nickname: '' } });
+    g.tick();
+    clock = 11 * 60_000;
+    for (let i = 0; i < 50; i++) g.tick(); // sweep runs every SWEEP_EVERY_TICKS
+    const s = g.snapshot();
+    expect(s.crowd).toHaveLength(0);
+    expect(s.crowdOverflow).toBe(0);
+  });
+});
+
 describe('GameEngine sessions', () => {
   it('resumes the same room after restart, resets on a new room', () => {
     const g = make(); g.startSession('A');

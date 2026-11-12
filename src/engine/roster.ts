@@ -52,6 +52,23 @@ export class Roster {
     };
   }
 
+  /** Drop viewers unseen for IDLE_EVICT_MS. Returns evicted ids. */
+  sweep(now: number): string[] {
+    const cutoff = now - GAME.IDLE_EVICT_MS;
+    const gone: string[] = [];
+    for (const [id, e] of this.entries) {
+      if (e.lastSeenAt < cutoff) {
+        this.entries.delete(id);
+        gone.push(id);
+      }
+    }
+    return gone;
+  }
+
+  get size(): number {
+    return this.entries.size;
+  }
+
   clear(): void {
     this.entries.clear();
   }

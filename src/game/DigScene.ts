@@ -263,6 +263,7 @@ export class DigScene extends Phaser.Scene {
     s.crowd.forEach((a, i) => place(a, 'crowd', i));
     for (const [id, av] of this.avatars) {
       if (!keep.has(id)) {
+        this.tweens.killTweensOf([av.root, av.sprite, av.pick]);
         av.root.destroy();
         this.avatars.delete(id);
       }
@@ -385,6 +386,8 @@ export class DigScene extends Phaser.Scene {
     return this.card(200, color, a.rarity === 'legendary' ? 3000 : 1800, (c) => {
       const glow = this.add.circle(-300, 0, 80, color, 0.25);
       this.tweens.add({ targets: glow, scale: 1.25, alpha: 0.05, duration: 700, yoyo: true, repeat: -1 });
+      // Phaser doesn't kill tweens when their target is destroyed; an infinite one would live forever.
+      c.once(Phaser.GameObjects.Events.DESTROY, () => this.tweens.killTweensOf(glow));
       const icon = this.add.image(-300, 0, `icon-${a.rarity}`).setTint(color).setScale(2.4);
       c.add([glow, icon,
         text(this, -190, -30, `@${uniqueId} ได้ ${a.name}!`, 38).setOrigin(0, 0.5),

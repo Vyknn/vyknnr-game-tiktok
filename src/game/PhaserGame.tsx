@@ -14,6 +14,7 @@ export default function PhaserGame() {
     if (!host.current) return;
     const scene = new DigScene();
     sceneRef.current = scene;
+    if (new URLSearchParams(location.search).has('debug')) (window as unknown as { __dig: DigScene }).__dig = scene;
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: host.current,

@@ -81,7 +81,8 @@ export class Hub {
       if (!msg) return;
       const src = this.deps.makeSource(msg);
       this.source = src;
-      await src
+      // Not awaited: a slow first connect must not block a following Disconnect/Connect click.
+      void src
         .start(
           (e) => { if (this.source === src) this.deps.engine.handle(e); },
           (s) => { if (this.source === src) this.onSourceStatus(s); },

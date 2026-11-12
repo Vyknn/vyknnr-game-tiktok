@@ -75,35 +75,49 @@ abstract class ReconnectingSource implements EventSource {
   protected abstract close(): Promise<void>;
 }
 
-/** tiktok-live-connector (signing via Euler Stream). */
+/** The slice of TikTokLiveConnection we use; lets tests inject a fake. */
+export type LiveConn = {
+  on(ev: string, cb: (d: unknown) => void): unknown;
+  connect(): Promise<{ roomId: string | number }>;
+  disconnect(): Promise<void>;
+  removeAllListeners?(): unknown;
+};
+type ConnFactory = (username: string, signApiKey?: string) => LiveConn | Promise<LiveConn>;
+
+const realConn: ConnFactory = async (username, signApiKey) => {
+  const { TikTokLiveConnection } = await import('tiktok-live-connector');
+  return new TikTokLiveConnection(username, { ...(signApiKey ? { signApiKey } : {}) }) as unknown as LiveConn;
+};
+
+/** tiktok-live-connector (signing via Euler Stream). Event names match WebcastEvent/ControlEvent values. */
 export class ConnectorSource extends ReconnectingSource {
   readonly kind = 'connector' as const;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private conn: any = null;
+  private conn: LiveConn | null = null;
 
-  constructor(private opts: { username: string; signApiKey?: string }) {
+  constructor(private opts: { username: string; signApiKey?: string }, private makeConn: ConnFactory = realConn) {
     super();
   }
 
   protected async open(): Promise<void> {
-    const { TikTokLiveConnection, WebcastEvent, ControlEvent } = await import('tiktok-live-connector');
     await this.close();
-    const conn = new TikTokLiveConnection(this.opts.username, {
-      ...(this.opts.signApiKey ? { signApiKey: this.opts.signApiKey } : {}),
-    });
+    const conn = await this.makeConn(this.opts.username, this.opts.signApiKey);
+    if (this.stopped) return;
     this.conn = conn;
-    conn.on(WebcastEvent.LIKE, (d: unknown) => this.emit(normalizeLike(d)));
-    conn.on(WebcastEvent.GIFT, (d: unknown) => this.emit(normalizeGift(d)));
-    conn.on(WebcastEvent.MEMBER, (d: unknown) => this.emit(normalizeJoin(d)));
-    conn.on(WebcastEvent.CHAT, (d: unknown) => this.emit(normalizeChat(d)));
-    conn.on(ControlEvent.DISCONNECTED, () => {
-      if (this.conn === conn) this.scheduleReconnect('disconnected');
-    });
-    conn.on(WebcastEvent.STREAM_END, () => {
-      if (this.conn === conn) this.scheduleReconnect('stream ended');
-    });
-    conn.on(ControlEvent.ERROR, (err: unknown) => console.error('[connector]', err));
+    const mine = () => this.conn === conn && !this.stopped;
+    conn.on('like', (d) => mine() && this.emit(normalizeLike(d)));
+    conn.on('gift', (d) => mine() && this.emit(normalizeGift(d)));
+    conn.on('member', (d) => mine() && this.emit(normalizeJoin(d)));
+    conn.on('chat', (d) => mine() && this.emit(normalizeChat(d)));
+    conn.on('disconnected', () => { if (mine()) this.scheduleReconnect('disconnected'); });
+    conn.on('streamEnd', () => { if (mine()) this.scheduleReconnect('stream ended'); });
+    conn.on('error', (err) => console.error('[connector]', err));
     const state = await conn.connect();
+    // stop() (or a newer attempt) may have happened while we were connecting: don't leak this one.
+    if (!mine()) {
+      conn.removeAllListeners?.();
+      await conn.disconnect().catch(() => {});
+      return;
+    }
     this.connected(String(state.roomId));
   }
 
